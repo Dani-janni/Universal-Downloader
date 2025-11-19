@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube Downloader</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: "Inter", sans-serif;
+        background: #f8fbff;
+        color: #0b2b44;
+        text-align: center;
+    }
+
+    .top-icon { margin-top: 40px; }
+    .top-icon svg {
+        width: 55px;
+        height: 55px;
+        stroke: #00c5c5;
+    }
+
+    h1 {
+        margin-top: 20px;
+        font-size: 42px;
+        color: #0c2a45;
+        font-weight: 700;
+    }
+
+    p.subtitle {
+        margin-top: 5px;
+        font-size: 17px;
+        color: #6c7f92;
+    }
+
+    .download-box {
+        margin: 40px auto;
+        max-width: 750px;
+        background: white;
+        border-radius: 14px;
+        padding: 25px;
+        box-shadow: 0px 4px 25px rgba(0,0,0,0.07);
+        display: flex;
+        gap: 10px;
+    }
+
+    .download-box input {
+        flex: 1;
+        border: 1px solid #d6e3ee;
+        border-radius: 10px;
+        padding: 15px 18px;
+        font-size: 16px;
+        outline: none;
+    }
+
+    .download-box button {
+        background: #02c3c3;
+        border: none;
+        padding: 0 25px;
+        border-radius: 10px;
+        color: white;
+        font-size: 17px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .download-box button:hover {
+        background: #00adad;
+    }
+
+    /* Options box */
+    #optionsArea {
+        max-width: 700px;
+        margin: 20px auto;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+        text-align: left;
+    }
+
+    #radioContainer .optItem {
+        margin-bottom: 8px;
+        font-size: 15px;
+    }
+
+    /* Log box */
+    #log {
+        max-width: 700px;
+        margin: 20px auto;
+        padding: 0;
+        list-style: none;
+    }
+
+    #log li {
+        background: white;
+        padding: 10px 12px;
+        border-radius: 10px;
+        margin-bottom: 6px;
+        box-shadow: 0px 3px 12px rgba(0,0,0,0.05);
+        color: #465a6b;
+    }
+
+    .hd-badge {
+        position: absolute;
+        top: 40px;
+        right: 40px;
+        width: 85px;
+        height: 85px;
+        background: #d2f9ff;
+        border-radius: 12px;
+        border: 4px solid #7defff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-weight: 700;
+        color: #00a4c5;
+        font-size: 22px;
+        transform: rotate(45deg);
+    }
+    .hd-badge span { transform: rotate(-45deg); }
+</style>
+</head>
+
+<body>
+
+<div class="hd-badge"><span>HD</span></div>
+
+<div class="top-icon">
+<svg fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>
+</svg>
+</div>
+
+<h1>Universal Downloader HD</h1>
+<p class="subtitle">No ads. No watermarks. No registration.</p>
+
+<!-- URL + fetch options -->
+<div class="download-box">
+    <input id="urlInput" type="text" placeholder="https://youtube.com/...">
+    <button id="fetchBtn">Fetch</button>
+</div>
+
+<!-- Download Options -->
+<div id="optionsArea" class="d-none">
+    <h3 style="color:#00a0b8; margin-bottom:10px;">Select format</h3>
+    <form id="optForm">
+        <div id="radioContainer"></div>
+        <button id="downloadBtn" style="
+            margin-top:15px;
+            background:#00c58a;
+            padding:10px 20px;
+            border:none;
+            border-radius:10px;
+            color:white;
+            font-size:16px;
+            cursor:pointer;
+        ">Download</button>
+    </form>
+</div>
+
+<!-- Log List -->
+<ul id="log"></ul>
+
+<script>
+/* SAME SCRIPT FROM YOUR ORIGINAL VERSION */
+const fetchBtn = document.getElementById('fetchBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const urlInput = document.getElementById('urlInput');
+const radioContainer = document.getElementById('radioContainer');
+const optionsArea = document.getElementById('optionsArea');
+const log = document.getElementById('log');
+
+function addLog(text) {
+  const li = document.createElement('li');
+  li.textContent = text;
+  log.prepend(li);
+}
+
+fetchBtn.onclick = async () => {
+  const url = urlInput.value.trim();
+  if (!url) return alert('Enter a URL');
+
+  addLog("Fetching formats...");
+
+  try {
+    const resp = await fetch('/api/formats', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url})
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      addLog('Error: ' + (data.error || 'Failed to fetch formats'));
+      return;
+    }
+
+    radioContainer.innerHTML = '';
+    const opts = data.options;
+
+    addLog('Fetched: ' + (data.title || ''));
+
+    function makeRadio(id, label, size) {
+      const div = document.createElement('div');
+      div.className = 'optItem';
+
+      div.innerHTML = `
+        <label>
+            <input type="radio" name="choice" value="${id}">
+            ${label}${size ? ` — approx ${size} MB` : ""}
+        </label>
+      `;
+      radioContainer.appendChild(div);
+    }
+
+    if (opts.bestaudio) makeRadio(opts.bestaudio.id, opts.bestaudio.label, opts.bestaudio.size_mb);
+    if (opts['360p']) makeRadio(opts['360p'].id, opts['360p'].label, opts['360p'].size_mb);
+    if (opts['720p']) makeRadio(opts['720p'].id, opts['720p'].label, opts['720p'].size_mb);
+    if (opts['1080p']) makeRadio(opts['1080p'].id, opts['1080p'].label, opts['1080p'].size_mb);
+
+    makeRadio(opts.best.id, opts.best.label, opts.best.size_mb);
+
+    optionsArea.classList.remove('d-none');
+  } catch (err) {
+    addLog('Fetch error: ' + err.message);
+  }
+};
+
+document.getElementById('optForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const url = urlInput.value.trim();
+  const form = new FormData(e.target);
+  const choice = form.get('choice');
+
+  if (!choice) return alert('Select an option');
+
+  downloadBtn.disabled = true;
+  addLog('Starting download...');
+
+  try {
+    const resp = await fetch('/api/download', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url, choice})
+    });
+
+    const contentType = resp.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const data = await resp.json();
+      throw new Error(data.error || 'Download failed');
+    }
+
+    const blob = await resp.blob();
+    const disp = resp.headers.get('content-disposition') || '';
+    const match = disp.match(/filename="?(.+?)"?(;|$)/);
+    let filename = match ? match[1] : 'download';
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+
+    addLog('Download saved: ' + filename);
+  } catch (err) {
+    addLog('Error: ' + err.message);
+  } finally {
+    downloadBtn.disabled = false;
+  }
+};
+</script>
+
+</body>
+</html>
